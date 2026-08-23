@@ -13,8 +13,21 @@ if [ ! -f mesa_repro.c ]; then
     exit 1
 fi
 
-echo "=== Ensuring build tools and EGL/GL headers are present ==="
-sudo pacman -S --needed --noconfirm base-devel mesa libglvnd
+echo "=== Checking build tools and EGL/GL libraries are already present ==="
+echo "(not installing them here — they should already be pinned/installed by"
+echo " install.sh and packages.sh; installing them fresh here could silently"
+echo " pull a different, unpinned version depending on the current mirrorlist)"
+MISSING=""
+# gcc (not the "base-devel" group name — that's a group, not a queryable
+# package) and libglvnd (provides the actual EGL/GL libraries we link
+# against, pulled in as a dependency of mesa/vulkan-icd-loader).
+for pkg in gcc mesa libglvnd; do
+    pacman -Q "$pkg" > /dev/null 2>&1 || MISSING="$MISSING $pkg"
+done
+if [ -n "$MISSING" ]; then
+    echo "Missing:$MISSING — run install.sh and packages.sh first, in order, before building this." >&2
+    exit 1
+fi
 
 echo "=== Building ==="
 gcc -o mesa_repro mesa_repro.c -lEGL -lGL
