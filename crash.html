@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>WebGL zink/nvk SIGBUS repro (crashing case)</title>
+<style>
+  body { font-family: monospace; background: #111; color: #ddd; padding: 1em; }
+  #log { white-space: pre-wrap; }
+  .warn { color: #f55; font-weight: bold; }
+</style>
+</head>
+<body>
+<h3>WebGL texImage2D SIGBUS repro &mdash; crashing case</h3>
+<p class="warn">This crashes the driver (Mesa zink/nvk on NVIDIA Turing via
+nouveau) regardless of setup. On Firefox under native Wayland specifically,
+that crash can freeze the whole system -- save your work first if that's
+your setup. Under Chromium, or Firefox forced into XWayland, it stays a
+contained crash instead.</p>
+<p>Uploads a single 8192&times;8192 RGBA8 texture (268,435,456 bytes) via
+<code>texImage2D</code>. This is the same size/format as the crash originally
+found on a real site (a large single-texture upload), and matches a minimal
+headless (non-browser) EGL reproduction of the same fault. See the contrasting
+non-crashing pages in this directory: a smaller texture
+(<code>no_crash_small_texture.html</code>) and the same size under induced
+VRAM pressure (<code>no_crash_vram_pressure.html</code>).</p>
+<div id="log"></div>
+<script>
+const logEl = document.getElementById('log');
+function log(msg) {
+  logEl.textContent += msg + '\n';
+}
+function paint() {
+  return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+}
+
+async function main() {
+  const canvas = document.createElement('canvas');
+  const gl = canvas.getContext('webgl2', { powerPreference: 'high-performance' });
+  if (!gl) { log('Failed to get a WebGL2 context.'); return; }
+
+  const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+  const renderer = dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+  log('GL_RENDERER: ' + renderer);
+  log('GL_VERSION:  ' + gl.getParameter(gl.VERSION));
+
+  const W = 8192, H = 8192;
+  const size = W * H * 4;
+  log('Allocating ' + size + ' bytes (' + (size / (1024 * 1024)).toFixed(0) + ' MB) of texture data...');
+  const data = new Uint8Array(size);
+  data.fill(0x7f);
+
+  const tex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+
+  log('Calling texImage2D(' + W + 'x' + H + ' RGBA8)...');
+  await paint(); // force the log above to actually be on screen before the risky call
+
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, W, H, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+  gl.finish();
+
+  const err = gl.getError();
+  log('texImage2D completed. getError() = 0x' + err.toString(16));
+  log('No crash -- bug NOT reproduced (if you see this, either the driver is unaffected, or free VRAM headroom was insufficient for the bug to trigger -- see the VRAM-headroom findings in the bug report).');
+}
+
+main().catch(e => log('Exception: ' + e));
+</script>
+</body>
+</html>
