@@ -3,3 +3,12 @@ Pinned Arch Linux VM installer scripts for isolating the GPU as a variable when 
 
 ## Details
 Aims to provide reproducibility for bugs [Firefox](https://bugzilla.mozilla.org/show_bug.cgi?id=2063860) and [Mesa](https://gitlab.freedesktop.org/mesa/mesa/-/work_items/16102), in which a driver crash causes a complete system freeze when triggered via Firefox on Wayland but remains contained via Firefox on XWayland and Chromium on Wayland
+
+## Guest Set Up
+1) Configure VM with minimum 4GB of RAM.
+2) Mout and boot [arch installation meda](https://archive.archlinux.org/iso/2026.06.01/)
+3) Run: ```curl -O https://raw.githubusercontent.com/cheeseball456/arch-vm-firefox-repro-test/refs/heads/main/install.sh; bash install.sh ```
+4) Set root password, username, and user password when prompted.
+5) Reboot into installed system as root.
+6) Run: ```curl -O https://raw.githubusercontent.com/cheeseball456/arch-vm-firefox-repro-test/refs/heads/main/kernels.sh; bash kernels.sh``` to install the four testing kernels 6.18.44-lts, and 7.1.6 and their debugging options.
+7) Run: ```curl -O https://raw.githubusercontent.com/cheeseball456/arch-vm-firefox-repro-test/refs/heads/main/packages.sh; bash packages.sh``` to install the pinned versions of all required packages.
