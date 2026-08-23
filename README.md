@@ -6,9 +6,9 @@ Aims to provide reproducibility for bugs [Firefox](https://bugzilla.mozilla.org/
 
 ## Guest Set Up
 1) Configure VM with minimum 4GB of RAM.
-2) Mout and boot [arch installation meda](https://archive.archlinux.org/iso/2026.06.01/)
+2) Mount and boot [arch installation meda](https://archive.archlinux.org/iso/2026.06.01/)
 3) Run: ```curl -O https://raw.githubusercontent.com/cheeseball456/arch-vm-firefox-repro-test/refs/heads/main/install.sh; bash install.sh ```
-4) Set root password, username, and user password when prompted.
+4) Set root password, user name, and user password when prompted.
 5) Reboot into installed system as root.
-6) Run: ```curl -O https://raw.githubusercontent.com/cheeseball456/arch-vm-firefox-repro-test/refs/heads/main/kernels.sh; bash kernels.sh``` to install the four testing kernels 6.18.44-lts, and 7.1.6 and their debugging options.
+6) Run: ```curl -O https://raw.githubusercontent.com/cheeseball456/arch-vm-firefox-repro-test/refs/heads/main/kernels.sh; bash kernels.sh``` to install the four entries for the testing kernels 6.18.44-lts, and 7.1.6 and their debugging options.
 7) Run: ```curl -O https://raw.githubusercontent.com/cheeseball456/arch-vm-firefox-repro-test/refs/heads/main/packages.sh; bash packages.sh``` to install the pinned versions of all required packages.
