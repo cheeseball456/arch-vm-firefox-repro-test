@@ -12,7 +12,7 @@ Aims to provide reproducibility for bugs [Firefox](https://bugzilla.mozilla.org/
 5) Reboot into installed system as root.
 ### Route 1
 6) Clone the repo: ```git clone https://github.com/cheeseball456/arch-vm-firefox-repro-test``` and ```cd``` into it.
-7) Run ```bash kernels.sh; bash packages.sh``` to install kernel entries and pinned packages. 
+7) Run: ```bash kernels.sh; bash packages.sh``` to install kernel entries and pinned packages. 
 ### Route 2
 6) Run: ```curl -O https://raw.githubusercontent.com/cheeseball456/arch-vm-firefox-repro-test/refs/heads/main/kernels.sh; bash kernels.sh``` to install the four entries for the testing kernels 6.18.44-lts, and 7.1.6 and their debugging options.
 7) Run: ```curl -O https://raw.githubusercontent.com/cheeseball456/arch-vm-firefox-repro-test/refs/heads/main/packages.sh; bash packages.sh``` to install the pinned versions of all required packages.
