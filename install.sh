@@ -38,7 +38,9 @@ else
     BIOS_MODE=false
 fi
 echo "=== Proceeding with BIOS_MODE=$BIOS_MODE ==="
-
+if ! $BIOS_MODE; then
+    BASE_PACKAGES="$BASE_PACKAGES efibootmgr"
+fi
 echo "=== About to WIPE $DISK and install Arch Linux (archive snapshot: $ARCHIVE_DATE) ==="
 echo "Press Enter to continue, or Ctrl+C to abort."
 read -r < /dev/tty
