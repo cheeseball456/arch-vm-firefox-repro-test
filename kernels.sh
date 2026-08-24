@@ -31,6 +31,13 @@ if [ -z "$ROOT_UUID" ]; then
     exit 1
 fi
 echo "Root filesystem UUID: $ROOT_UUID"
+# ── Partition table module: match whatever install.sh actually used ──────
+if [ -d /sys/firmware/efi/efivars ]; then
+    PART_MODULE="part_gpt"
+else
+    PART_MODULE="part_msdos"
+fi
+echo "=== Detected partition table type module: $PART_MODULE ==="
 
 echo "=== Protecting the primary linux-lts kernel (currently installed) ==="
 cp -v /boot/vmlinuz-linux-lts "$LTS_VMLINUZ_PINNED"
@@ -63,7 +70,7 @@ menuentry 'Arch Linux, linux-lts 6.18.44 (DIAGNOSTIC)' {
     load_video
     set gfxpayload=keep
     insmod gzio
-    insmod part_msdos
+    insmod $PART_MODULE
     insmod ext2
     search --no-floppy --fs-uuid --set=root $ROOT_UUID
     linux $LTS_VMLINUZ_PINNED root=UUID=$ROOT_UUID rw $DIAG_PARAMS
@@ -74,7 +81,7 @@ menuentry 'Arch Linux, linux-lts 6.18.44 (CONTROL)' {
     load_video
     set gfxpayload=keep
     insmod gzio
-    insmod part_msdos
+    insmod $PART_MODULE
     insmod ext2
     search --no-floppy --fs-uuid --set=root $ROOT_UUID
     linux $LTS_VMLINUZ_PINNED root=UUID=$ROOT_UUID rw
@@ -85,7 +92,7 @@ menuentry 'Arch Linux, linux 7.1.6 (DIAGNOSTIC)' {
     load_video
     set gfxpayload=keep
     insmod gzio
-    insmod part_msdos
+    insmod $PART_MODULE
     insmod ext2
     search --no-floppy --fs-uuid --set=root $ROOT_UUID
     linux $K716_VMLINUZ_PINNED root=UUID=$ROOT_UUID rw $DIAG_PARAMS
@@ -96,7 +103,7 @@ menuentry 'Arch Linux, linux 7.1.6 (CONTROL)' {
     load_video
     set gfxpayload=keep
     insmod gzio
-    insmod part_msdos
+    insmod $PART_MODULE
     insmod ext2
     search --no-floppy --fs-uuid --set=root $ROOT_UUID
     linux $K716_VMLINUZ_PINNED root=UUID=$ROOT_UUID rw
