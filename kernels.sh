@@ -31,13 +31,6 @@ if [ -z "$ROOT_UUID" ]; then
     exit 1
 fi
 echo "Root filesystem UUID: $ROOT_UUID"
-# ── Partition table module: match whatever install.sh actually used ──────
-if [ -d /sys/firmware/efi/efivars ]; then
-    PART_MODULE="part_gpt"
-else
-    PART_MODULE="part_msdos"
-fi
-echo "=== Detected partition table type module: $PART_MODULE ==="
 
 echo "=== Protecting the primary linux-lts kernel (currently installed) ==="
 cp -v /boot/vmlinuz-linux-lts "$LTS_VMLINUZ_PINNED"
@@ -58,9 +51,36 @@ echo "=== Restoring mirrorlist to primary (LTS) archive date ==="
 echo "Server=https://archive.archlinux.org/repos/${LTS_ARCHIVE_DATE}/\$repo/os/\$arch" > /etc/pacman.d/mirrorlist
 pacman -Syy
 
+# ── Boot-mode-dependent GRUB details ──────────────────────────────────────
+# UEFI: /boot is a separate ESP — GRUB must search for THAT partition's UUID,
+# and kernel/initrd paths have no "/boot" prefix (the ESP's own root IS /boot).
+# Legacy BIOS: /boot lives on the same partition as /, so boot UUID == root
+# UUID and paths need the "/boot" prefix. root=UUID=$ROOT_UUID (kernel param)
+# is unaffected either way — that's unrelated to where GRUB finds the files.
+if [ -d /sys/firmware/efi/efivars ]; then
+    PART_MODULE="part_gpt"
+    BOOT_UUID=$(findmnt -no UUID /boot)
+    GRUB_LTS_VMLINUZ="${LTS_VMLINUZ_PINNED#/boot}"
+    GRUB_LTS_INITRD="${LTS_INITRD_PINNED#/boot}"
+    GRUB_K716_VMLINUZ="${K716_VMLINUZ_PINNED#/boot}"
+    GRUB_K716_INITRD="${K716_INITRD_PINNED#/boot}"
+else
+    PART_MODULE="part_msdos"
+    BOOT_UUID="$ROOT_UUID"
+    GRUB_LTS_VMLINUZ="$LTS_VMLINUZ_PINNED"
+    GRUB_LTS_INITRD="$LTS_INITRD_PINNED"
+    GRUB_K716_VMLINUZ="$K716_VMLINUZ_PINNED"
+    GRUB_K716_INITRD="$K716_INITRD_PINNED"
+fi
+
+if [ -z "$BOOT_UUID" ]; then
+    echo "Could not determine boot filesystem UUID." >&2
+    exit 1
+fi
+echo "Detected partition table module: $PART_MODULE"
+echo "Boot filesystem UUID (GRUB search target): $BOOT_UUID"
+
 echo "=== Writing GRUB entries ==="
-# Idempotent: strip any block from a previous run before appending a fresh one,
-# so re-running this script doesn't duplicate menu entries.
 sed -i '/# BEGIN vm-install kernels/,/# END vm-install kernels/d' /etc/grub.d/40_custom
 
 cat >> /etc/grub.d/40_custom <<GRUBEOF
@@ -72,9 +92,9 @@ menuentry 'Arch Linux, linux-lts 6.18.44 (DIAGNOSTIC)' {
     insmod gzio
     insmod $PART_MODULE
     insmod ext2
-    search --no-floppy --fs-uuid --set=root $ROOT_UUID
-    linux $LTS_VMLINUZ_PINNED root=UUID=$ROOT_UUID rw $DIAG_PARAMS
-    initrd $LTS_INITRD_PINNED
+    search --no-floppy --fs-uuid --set=root $BOOT_UUID
+    linux $GRUB_LTS_VMLINUZ root=UUID=$ROOT_UUID rw $DIAG_PARAMS
+    initrd $GRUB_LTS_INITRD
 }
 
 menuentry 'Arch Linux, linux-lts 6.18.44 (CONTROL)' {
@@ -83,9 +103,9 @@ menuentry 'Arch Linux, linux-lts 6.18.44 (CONTROL)' {
     insmod gzio
     insmod $PART_MODULE
     insmod ext2
-    search --no-floppy --fs-uuid --set=root $ROOT_UUID
-    linux $LTS_VMLINUZ_PINNED root=UUID=$ROOT_UUID rw
-    initrd $LTS_INITRD_PINNED
+    search --no-floppy --fs-uuid --set=root $BOOT_UUID
+    linux $GRUB_LTS_VMLINUZ root=UUID=$ROOT_UUID rw
+    initrd $GRUB_LTS_INITRD
 }
 
 menuentry 'Arch Linux, linux 7.1.6 (DIAGNOSTIC)' {
@@ -94,9 +114,9 @@ menuentry 'Arch Linux, linux 7.1.6 (DIAGNOSTIC)' {
     insmod gzio
     insmod $PART_MODULE
     insmod ext2
-    search --no-floppy --fs-uuid --set=root $ROOT_UUID
-    linux $K716_VMLINUZ_PINNED root=UUID=$ROOT_UUID rw $DIAG_PARAMS
-    initrd $K716_INITRD_PINNED
+    search --no-floppy --fs-uuid --set=root $BOOT_UUID
+    linux $GRUB_K716_VMLINUZ root=UUID=$ROOT_UUID rw $DIAG_PARAMS
+    initrd $GRUB_K716_INITRD
 }
 
 menuentry 'Arch Linux, linux 7.1.6 (CONTROL)' {
@@ -105,9 +125,9 @@ menuentry 'Arch Linux, linux 7.1.6 (CONTROL)' {
     insmod gzio
     insmod $PART_MODULE
     insmod ext2
-    search --no-floppy --fs-uuid --set=root $ROOT_UUID
-    linux $K716_VMLINUZ_PINNED root=UUID=$ROOT_UUID rw
-    initrd $K716_INITRD_PINNED
+    search --no-floppy --fs-uuid --set=root $BOOT_UUID
+    linux $GRUB_K716_VMLINUZ root=UUID=$ROOT_UUID rw
+    initrd $GRUB_K716_INITRD
 }
 # END vm-install kernels
 GRUBEOF
