@@ -19,8 +19,25 @@ TIMEZONE="Europe/London"
 LOCALE="en_GB.UTF-8"
 BASE_PACKAGES="base linux-lts linux-firmware vim base-devel networkmanager grub sudo openssh git"
 GPU_PACKAGES="mesa vulkan-nouveau vulkan-icd-loader xf86-video-nouveau xorg-xwayland plasma-desktop kwin sddm firefox"
-BIOS_MODE=true                     # true = legacy BIOS/MBR, false = UEFI/GPT
 # ─────────────────────────────────────────────────────────────────────────
+
+# ── Boot mode: auto-detect from how the live ISO booted, confirm with user ──
+if [ -d /sys/firmware/efi/efivars ]; then
+    DETECTED_MODE="UEFI"; DEFAULT_ANSWER="n"
+else
+    DETECTED_MODE="Legacy BIOS"; DEFAULT_ANSWER="y"
+fi
+
+echo "=== Detected boot mode: $DETECTED_MODE (based on how this ISO session booted) ==="
+read -r -p "Install using Legacy BIOS/MBR instead? [y/N, default follows detected mode] " BIOS_MODE_ANSWER < /dev/tty
+BIOS_MODE_ANSWER="${BIOS_MODE_ANSWER:-$DEFAULT_ANSWER}"
+
+if [[ "$BIOS_MODE_ANSWER" =~ ^[Yy]$ ]]; then
+    BIOS_MODE=true
+else
+    BIOS_MODE=false
+fi
+echo "=== Proceeding with BIOS_MODE=$BIOS_MODE ==="
 
 echo "=== About to WIPE $DISK and install Arch Linux (archive snapshot: $ARCHIVE_DATE) ==="
 echo "Press Enter to continue, or Ctrl+C to abort."
