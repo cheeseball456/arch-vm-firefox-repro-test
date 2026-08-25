@@ -49,8 +49,20 @@ echo "=== Proceeding: $CURRENT_DRIVER -> $TARGET ==="
 read -r -p "Press Enter to continue, or Ctrl+C to abort." < /dev/tty
 
 if [ "$TARGET" = "nvidia" ]; then
-    echo "=== Blacklisting nouveau (guest-side) ==="
+    echo "=== Blacklisting nouveau (modprobe.d) ==="
     echo "blacklist nouveau" > /etc/modprobe.d/blacklist-nouveau-guest.conf
+
+    # The autodetect hook bakes 'nouveau' into the initramfs for early KMS,
+    # so modprobe.d alone is too late — it fires after the initramfs has already
+    # loaded the module. MODULES_BLACKLIST prevents it from being included at all.
+    echo "=== Blacklisting nouveau from initramfs (MODULES_BLACKLIST in mkinitcpio.conf) ==="
+    if grep -q '^MODULES_BLACKLIST=' /etc/mkinitcpio.conf; then
+        if ! grep -q 'nouveau' /etc/mkinitcpio.conf; then
+            sed -i 's/^MODULES_BLACKLIST=(\(.*\))/MODULES_BLACKLIST=(\1 nouveau)/' /etc/mkinitcpio.conf
+        fi
+    else
+        echo 'MODULES_BLACKLIST=(nouveau)' >> /etc/mkinitcpio.conf
+    fi
 
     echo "=== Installing headers + proprietary driver (from currently-pinned mirrorlist) ==="
     pacman -S --noconfirm "$HEADERS_PKG" nvidia-dkms nvidia-utils
@@ -61,6 +73,13 @@ if [ "$TARGET" = "nvidia" ]; then
 else
     echo "=== Removing nouveau guest-side blacklist (if present) ==="
     rm -f /etc/modprobe.d/blacklist-nouveau-guest.conf
+
+    echo "=== Removing nouveau from initramfs MODULES_BLACKLIST ==="
+    # Remove the word 'nouveau' from the MODULES_BLACKLIST line regardless of position.
+    sed -i '/^MODULES_BLACKLIST=/ s/\bnouveau\b//' /etc/mkinitcpio.conf
+    # Clean up any leading or trailing space left inside the parens.
+    sed -i 's/^MODULES_BLACKLIST=(  */MODULES_BLACKLIST=(/' /etc/mkinitcpio.conf
+    sed -i 's/^MODULES_BLACKLIST=(\(.*[^ ]\)  *)/MODULES_BLACKLIST=(\1)/' /etc/mkinitcpio.conf
 
     echo "=== Removing proprietary driver ==="
     pacman -Rns --noconfirm nvidia-dkms nvidia-utils || true
