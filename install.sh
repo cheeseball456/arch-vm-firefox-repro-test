@@ -18,7 +18,6 @@ HOSTNAME="gpu-test-vm"
 TIMEZONE="Europe/London"
 LOCALE="en_GB.UTF-8"
 BASE_PACKAGES="base linux-lts linux-firmware vim base-devel networkmanager grub sudo openssh git"
-GPU_PACKAGES="mesa vulkan-nouveau vulkan-icd-loader xf86-video-nouveau xorg-xwayland plasma-desktop kwin sddm firefox"
 # ─────────────────────────────────────────────────────────────────────────
 
 # ── Boot mode: auto-detect from how the live ISO booted, confirm with user ──
@@ -118,12 +117,6 @@ arch-chroot /mnt useradd -m -G wheel -s /bin/bash "$NEW_USERNAME"
 echo "Set password for $NEW_USERNAME:"
 arch-chroot /mnt passwd "$NEW_USERNAME"
 sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /mnt/etc/sudoers
-
-read -r -p "Install the GPU/Mesa/desktop package set now too? [y/N] " ans < /dev/tty
-if [[ "$ans" =~ ^[Yy]$ ]]; then
-    arch-chroot /mnt pacman -S --noconfirm $GPU_PACKAGES
-    arch-chroot /mnt systemctl enable sddm
-fi
 
 echo "=== Done. Unmount and reboot when ready: ==="
 echo "  umount -R /mnt && reboot"
