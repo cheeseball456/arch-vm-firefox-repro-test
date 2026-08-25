@@ -89,6 +89,17 @@ fi
 echo "=== Regenerating initramfs (mkinitcpio -P) ==="
 mkinitcpio -P
 
+# GRUB loads the pinned initramfs files, not the standard ones that mkinitcpio
+# writes by default. Copy the freshly generated files to the pinned locations so
+# the MODULES_BLACKLIST change (or its removal) is actually seen at boot.
+echo "=== Updating pinned initramfs files ==="
+[ -f /boot/initramfs-linux.img ]     && cp -v /boot/initramfs-linux.img     /boot/initramfs-linux-7.1.6-pinned.img
+[ -f /boot/initramfs-linux-lts.img ] && cp -v /boot/initramfs-linux-lts.img /boot/initramfs-linux-lts-6.18.44-pinned.img
+
+echo "=== Removing non-pinned and fallback initramfs to free ESP space ==="
+rm -f /boot/initramfs-linux.img          /boot/initramfs-linux-fallback.img \
+      /boot/initramfs-linux-lts.img      /boot/initramfs-linux-lts-fallback.img
+
 if [ "$TARGET" = "nvidia" ]; then
     echo "=== Verifying DKMS build ==="
     DKMS_STATUS=$(dkms status 2>/dev/null)
