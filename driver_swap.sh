@@ -64,8 +64,19 @@ if [ "$TARGET" = "nvidia" ]; then
         echo 'MODULES_BLACKLIST=(nouveau)' >> /etc/mkinitcpio.conf
     fi
 
-    echo "=== Installing headers + proprietary driver (from currently-pinned mirrorlist) ==="
-    pacman -S --noconfirm "$HEADERS_PKG" nvidia-dkms nvidia-utils
+    echo "=== Verifying headers match running kernel (must be installed by kernels.sh) ==="
+    KERNEL_PKG="${HEADERS_PKG%-headers}"  # linux-headers → linux, linux-lts-headers → linux-lts
+    HEADERS_VER=$(pacman -Q "$HEADERS_PKG" 2>/dev/null | awk '{print $2}')
+    KERNEL_VER=$(pacman -Q "$KERNEL_PKG" 2>/dev/null | awk '{print $2}')
+    if [ -z "$HEADERS_VER" ] || [ "$HEADERS_VER" != "$KERNEL_VER" ]; then
+        echo "ERROR: $HEADERS_PKG ($HEADERS_VER) does not match $KERNEL_PKG ($KERNEL_VER)." >&2
+        echo "Install matching headers from the correct archive date (see kernels.sh) then re-run." >&2
+        exit 1
+    fi
+    echo "Headers OK: $HEADERS_PKG $HEADERS_VER"
+
+    echo "=== Installing proprietary driver (from currently-pinned mirrorlist) ==="
+    pacman -S --noconfirm nvidia-dkms nvidia-utils
 
     echo "=== Enabling early KMS modeset (needed for correct Wayland behaviour) ==="
     echo "options nvidia-drm modeset=1" > /etc/modprobe.d/nvidia-modeset.conf
