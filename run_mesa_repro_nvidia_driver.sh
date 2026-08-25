@@ -29,11 +29,36 @@ fi
 # meaningless (and potentially confusing) once forcing the NVIDIA vendor.
 unset MESA_LOADER_DRIVER_OVERRIDE
 
-echo "=== Forcing GLVND vendor: nvidia ==="
+# NVIDIA's EGL implementation needs a live Wayland or X11 connection —
+# it does not go through DRM directly the way Mesa does. If the variables
+# are already set (running from a desktop session), this block is a no-op.
+if [ -z "${WAYLAND_DISPLAY:-}" ] && [ -z "${DISPLAY:-}" ]; then
+    # Try to find a live Wayland socket owned by any logged-in user.
+    WAYLAND_SOCK=$(find /run/user -name 'wayland-[0-9]*' 2>/dev/null | head -1)
+    if [ -n "$WAYLAND_SOCK" ]; then
+        export XDG_RUNTIME_DIR=$(dirname "$WAYLAND_SOCK")
+        export WAYLAND_DISPLAY=$(basename "$WAYLAND_SOCK")
+        echo "Auto-detected Wayland display: $WAYLAND_DISPLAY (XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR)"
+    elif [ -S /tmp/.X11-unix/X0 ]; then
+        export DISPLAY=:0
+        echo "Auto-detected X11 display: $DISPLAY"
+    else
+        echo "ERROR: No Wayland or X11 display found." >&2
+        echo "Run this script from a terminal inside the Plasma/desktop session, not over SSH or a bare TTY." >&2
+        exit 1
+    fi
+fi
+
+echo "=== Letting GLVND select the NVIDIA vendor automatically ==="
+echo "=== (10_nvidia.json has higher priority than 50_mesa.json — GLVND picks it) ==="
 echo "=== Verify GL_VENDOR/GL_RENDERER in the output below actually show NVIDIA ==="
 echo "=== before treating any crash/no-crash result as meaningful.            ==="
 echo
 
-__EGL_VENDOR_LIBRARY_FILENAMES="$NVIDIA_EGL_VENDOR" \
+# __EGL_VENDOR_LIBRARY_FILENAMES is intentionally NOT set here — it bypasses
+# GLVND's Wayland/X11 platform negotiation and calls NVIDIA's eglGetDisplay
+# directly, which fails on EGL_DEFAULT_DISPLAY. Let GLVND handle the platform
+# detection; the NVIDIA ICD wins by priority when nvidia-utils is installed.
+unset __EGL_VENDOR_LIBRARY_FILENAMES
 __GLX_VENDOR_LIBRARY_NAME="nvidia" \
 ./mesa_repro
