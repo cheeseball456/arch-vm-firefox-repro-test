@@ -60,9 +60,9 @@ if $BIOS_MODE; then
     mount "$ROOT_PART" /mnt
 else
     parted -s "$DISK" mklabel gpt
-    parted -s "$DISK" mkpart ESP fat32 1MiB 513MiB
+    parted -s "$DISK" mkpart ESP fat32 1MiB 1537MiB
     parted -s "$DISK" set 1 esp on
-    parted -s "$DISK" mkpart primary ext4 513MiB 100%
+    parted -s "$DISK" mkpart primary ext4 1537MiB 100%
     EFI_PART="${DISK}1"
     ROOT_PART="${DISK}2"
     mkfs.fat -F32 "$EFI_PART"

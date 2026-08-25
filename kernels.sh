@@ -33,23 +33,45 @@ fi
 echo "Root filesystem UUID: $ROOT_UUID"
 
 echo "=== Protecting the primary linux-lts kernel (currently installed) ==="
-cp -v /boot/vmlinuz-linux-lts "$LTS_VMLINUZ_PINNED"
-cp -v /boot/initramfs-linux-lts.img "$LTS_INITRD_PINNED"
+if [ -f "$LTS_VMLINUZ_PINNED" ] && [ -f "$LTS_INITRD_PINNED" ]; then
+    echo "Pinned LTS files already exist — skipping copy."
+else
+    cp -v /boot/vmlinuz-linux-lts "$LTS_VMLINUZ_PINNED"
+    cp -v /boot/initramfs-linux-lts.img "$LTS_INITRD_PINNED"
+fi
 
 echo "=== Installing second kernel: linux 7.1.6.arch1-1 (from $KERNEL_716_ARCHIVE_DATE archive) ==="
 cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.bak
 
-echo "Server=https://archive.archlinux.org/repos/${KERNEL_716_ARCHIVE_DATE}/\$repo/os/\$arch" > /etc/pacman.d/mirrorlist
-pacman -Syy
-# linux-headers must come from the same archive date as linux so they match exactly.
-# nvidia-open-dkms's post-install hook silently produces no build if the running
-# kernel and headers versions differ (confirmed: caused a blank dkms status on a
-# test run when headers came from the packages.sh date instead).
-pacman -S --noconfirm linux linux-headers
+if [ -f "$K716_VMLINUZ_PINNED" ] && [ -f "$K716_INITRD_PINNED" ]; then
+    echo "Pinned 7.1.6 files already exist — skipping install and copy."
+else
+    echo "Server=https://archive.archlinux.org/repos/${KERNEL_716_ARCHIVE_DATE}/\$repo/os/\$arch" > /etc/pacman.d/mirrorlist
+    pacman -Syy
+    # linux-headers must come from the same archive date as linux so they match exactly.
+    # nvidia-open-dkms's post-install hook silently produces no build if the running
+    # kernel and headers versions differ (confirmed: caused a blank dkms status on a
+    # test run when headers came from the packages.sh date instead).
+    pacman -S --noconfirm linux linux-headers
 
-echo "=== Protecting the second kernel's files ==="
-cp -v /boot/vmlinuz-linux "$K716_VMLINUZ_PINNED"
-cp -v /boot/initramfs-linux.img "$K716_INITRD_PINNED"
+    echo "=== Protecting the second kernel's files ==="
+    INITRD_SIZE=$(stat -c%s /boot/initramfs-linux.img 2>/dev/null || echo 0)
+    if [ "$INITRD_SIZE" -lt 10485760 ]; then
+        echo "ERROR: /boot/initramfs-linux.img is only ${INITRD_SIZE} bytes — looks truncated." >&2
+        echo "mkinitcpio likely ran out of memory. Increase VM RAM and re-run." >&2
+        exit 1
+    fi
+    cp -v /boot/vmlinuz-linux "$K716_VMLINUZ_PINNED"
+    cp -v /boot/initramfs-linux.img "$K716_INITRD_PINNED"
+fi
+
+echo "=== Removing non-pinned and fallback initramfs files to free ESP space ==="
+# Fallback initramfs files are 200-300 MB each and would overflow a 1.5 GB ESP
+# alongside two kernels worth of pinned copies. The pinned copies are all GRUB uses.
+rm -f /boot/initramfs-linux.img \
+      /boot/initramfs-linux-fallback.img \
+      /boot/initramfs-linux-lts.img \
+      /boot/initramfs-linux-lts-fallback.img
 
 echo "=== Restoring mirrorlist to primary (LTS) archive date ==="
 echo "Server=https://archive.archlinux.org/repos/${LTS_ARCHIVE_DATE}/\$repo/os/\$arch" > /etc/pacman.d/mirrorlist
@@ -143,6 +165,7 @@ echo "=== Enforcing manual GRUB selection (no auto-boot timeout) ==="
 sed -i 's/^GRUB_TIMEOUT=.*/GRUB_TIMEOUT=-1/' /etc/default/grub
 
 echo "=== Regenerating GRUB config ==="
+chmod +x /etc/grub.d/40_custom
 grub-mkconfig -o /boot/grub/grub.cfg
 
 echo "=== Done. Reboot to see the 4 new entries at the GRUB menu. ==="
