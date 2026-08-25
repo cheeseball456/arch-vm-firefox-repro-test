@@ -65,12 +65,11 @@ else
     cp -v /boot/initramfs-linux.img "$K716_INITRD_PINNED"
 fi
 
-echo "=== Removing non-pinned and fallback initramfs files to free ESP space ==="
-# Fallback initramfs files are 200-300 MB each and would overflow a 1.5 GB ESP
-# alongside two kernels worth of pinned copies. The pinned copies are all GRUB uses.
-rm -f /boot/initramfs-linux.img \
-      /boot/initramfs-linux-fallback.img \
-      /boot/initramfs-linux-lts.img \
+echo "=== Removing fallback initramfs files to free ESP space ==="
+# Fallback initramfs files are 200-300 MB each; keep the standard initramfs and
+# vmlinuz files so mkinitcpio presets (which reference /boot/vmlinuz-linux etc.)
+# continue to work. Only the fallback images are removed.
+rm -f /boot/initramfs-linux-fallback.img \
       /boot/initramfs-linux-lts-fallback.img
 
 echo "=== Restoring mirrorlist to primary (LTS) archive date ==="

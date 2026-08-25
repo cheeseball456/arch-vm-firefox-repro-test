@@ -59,6 +59,8 @@ if [ "$TARGET" = "nvidia" ]; then
     if grep -q '^MODULES_BLACKLIST=' /etc/mkinitcpio.conf; then
         if ! grep -q 'nouveau' /etc/mkinitcpio.conf; then
             sed -i 's/^MODULES_BLACKLIST=(\(.*\))/MODULES_BLACKLIST=(\1 nouveau)/' /etc/mkinitcpio.conf
+            # Trim any leading space left when the list was previously empty: "( nouveau)" → "(nouveau)"
+            sed -i 's/^MODULES_BLACKLIST=(  */MODULES_BLACKLIST=(/' /etc/mkinitcpio.conf
         fi
     else
         echo 'MODULES_BLACKLIST=(nouveau)' >> /etc/mkinitcpio.conf
@@ -76,7 +78,7 @@ if [ "$TARGET" = "nvidia" ]; then
     echo "Headers OK: $HEADERS_PKG $HEADERS_VER"
 
     echo "=== Installing proprietary driver (from currently-pinned mirrorlist) ==="
-    pacman -S --noconfirm nvidia-dkms nvidia-utils
+    pacman -S --noconfirm nvidia-open-dkms nvidia-utils
 
     echo "=== Enabling early KMS modeset (needed for correct Wayland behaviour) ==="
     echo "options nvidia-drm modeset=1" > /etc/modprobe.d/nvidia-modeset.conf
@@ -93,7 +95,9 @@ else
     sed -i 's/^MODULES_BLACKLIST=(\(.*[^ ]\)  *)/MODULES_BLACKLIST=(\1)/' /etc/mkinitcpio.conf
 
     echo "=== Removing proprietary driver ==="
-    pacman -Rns --noconfirm nvidia-dkms nvidia-utils || true
+    pacman -Rns --noconfirm nvidia-open-dkms 2>/dev/null || true
+    pacman -Rns --noconfirm nvidia-dkms       2>/dev/null || true
+    pacman -Rns --noconfirm nvidia-utils      2>/dev/null || true
     rm -f /etc/modprobe.d/nvidia-modeset.conf
 fi
 
@@ -104,12 +108,11 @@ mkinitcpio -P
 # writes by default. Copy the freshly generated files to the pinned locations so
 # the MODULES_BLACKLIST change (or its removal) is actually seen at boot.
 echo "=== Updating pinned initramfs files ==="
-[ -f /boot/initramfs-linux.img ]     && cp -v /boot/initramfs-linux.img     /boot/initramfs-linux-7.1.6-pinned.img
-[ -f /boot/initramfs-linux-lts.img ] && cp -v /boot/initramfs-linux-lts.img /boot/initramfs-linux-lts-6.18.44-pinned.img
+cp -v /boot/initramfs-linux.img     /boot/initramfs-linux-7.1.6-pinned.img
+cp -v /boot/initramfs-linux-lts.img /boot/initramfs-linux-lts-6.18.44-pinned.img
 
-echo "=== Removing non-pinned and fallback initramfs to free ESP space ==="
-rm -f /boot/initramfs-linux.img          /boot/initramfs-linux-fallback.img \
-      /boot/initramfs-linux-lts.img      /boot/initramfs-linux-lts-fallback.img
+echo "=== Removing fallback initramfs to free ESP space ==="
+rm -f /boot/initramfs-linux-fallback.img /boot/initramfs-linux-lts-fallback.img
 
 if [ "$TARGET" = "nvidia" ]; then
     echo "=== Verifying DKMS build ==="
@@ -135,5 +138,5 @@ echo "=== Done. Reboot required for the driver change to take effect. ==="
 echo "After reboot, verify with:"
 echo "  lspci -k -s $GPU_PCI          # should show 'Kernel driver in use: $TARGET'"
 if [ "$TARGET" = "nvidia" ]; then
-    echo "  nvidia-smi                    # should show the RTX 2060"
+    echo "  nvidia-smi                    # should show the GPU"
 fi
