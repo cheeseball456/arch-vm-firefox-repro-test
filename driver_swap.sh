@@ -70,6 +70,26 @@ fi
 echo "=== Regenerating initramfs (mkinitcpio -P) ==="
 mkinitcpio -P
 
+if [ "$TARGET" = "nvidia" ]; then
+    echo "=== Verifying DKMS build ==="
+    DKMS_STATUS=$(dkms status 2>/dev/null)
+    if echo "$DKMS_STATUS" | grep -qi "nvidia.*installed"; then
+        echo "DKMS: OK — nvidia module built for $CURRENT_KERNEL."
+    else
+        echo "WARNING: dkms status does not show nvidia as installed:"
+        echo "${DKMS_STATUS:-<blank>}"
+        echo ""
+        echo "This almost certainly means $HEADERS_PKG does not match the running kernel ($CURRENT_KERNEL)."
+        echo "The proprietary driver WILL NOT load after reboot until this is fixed."
+        echo ""
+        echo "Fix: install the headers that match $CURRENT_KERNEL from the correct archive date, then:"
+        echo "  dkms autoinstall"
+        echo ""
+        echo "Aborting to prevent a broken reboot. Fix headers and re-run, or reboot into nouveau."
+        exit 1
+    fi
+fi
+
 echo "=== Done. Reboot required for the driver change to take effect. ==="
 echo "After reboot, verify with:"
 echo "  lspci -k -s $GPU_PCI          # should show 'Kernel driver in use: $TARGET'"

@@ -41,7 +41,11 @@ cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.bak
 
 echo "Server=https://archive.archlinux.org/repos/${KERNEL_716_ARCHIVE_DATE}/\$repo/os/\$arch" > /etc/pacman.d/mirrorlist
 pacman -Syy
-pacman -S --noconfirm linux
+# linux-headers must come from the same archive date as linux so they match exactly.
+# nvidia-open-dkms's post-install hook silently produces no build if the running
+# kernel and headers versions differ (confirmed: caused a blank dkms status on a
+# test run when headers came from the packages.sh date instead).
+pacman -S --noconfirm linux linux-headers
 
 echo "=== Protecting the second kernel's files ==="
 cp -v /boot/vmlinuz-linux "$K716_VMLINUZ_PINNED"
@@ -50,6 +54,9 @@ cp -v /boot/initramfs-linux.img "$K716_INITRD_PINNED"
 echo "=== Restoring mirrorlist to primary (LTS) archive date ==="
 echo "Server=https://archive.archlinux.org/repos/${LTS_ARCHIVE_DATE}/\$repo/os/\$arch" > /etc/pacman.d/mirrorlist
 pacman -Syy
+# Install matching LTS headers from the same archive date as linux-lts so
+# driver_swap.sh can build DKMS modules against the LTS kernel too.
+pacman -S --noconfirm linux-lts-headers
 
 # ── Boot-mode-dependent GRUB details ──────────────────────────────────────
 # UEFI: /boot is a separate ESP — GRUB must search for THAT partition's UUID,
