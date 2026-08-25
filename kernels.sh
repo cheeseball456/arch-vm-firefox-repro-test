@@ -121,7 +121,7 @@ menuentry 'Arch Linux, linux-lts 6.18.44 (DIAGNOSTIC)' {
     insmod $PART_MODULE
     insmod ext2
     search --no-floppy --fs-uuid --set=root $BOOT_UUID
-    linux $GRUB_LTS_VMLINUZ root=UUID=$ROOT_UUID rw $DIAG_PARAMS
+    linux $GRUB_LTS_VMLINUZ root=UUID=$ROOT_UUID rw $DIAG_PARAMS console=tty0 console=ttyS0,115200
     initrd $GRUB_LTS_INITRD
 }
 
@@ -132,7 +132,7 @@ menuentry 'Arch Linux, linux-lts 6.18.44 (CONTROL)' {
     insmod $PART_MODULE
     insmod ext2
     search --no-floppy --fs-uuid --set=root $BOOT_UUID
-    linux $GRUB_LTS_VMLINUZ root=UUID=$ROOT_UUID rw
+    linux $GRUB_LTS_VMLINUZ root=UUID=$ROOT_UUID rw console=tty0 console=ttyS0,115200
     initrd $GRUB_LTS_INITRD
 }
 
@@ -143,7 +143,7 @@ menuentry 'Arch Linux, linux 7.1.6 (DIAGNOSTIC)' {
     insmod $PART_MODULE
     insmod ext2
     search --no-floppy --fs-uuid --set=root $BOOT_UUID
-    linux $GRUB_K716_VMLINUZ root=UUID=$ROOT_UUID rw $DIAG_PARAMS
+    linux $GRUB_K716_VMLINUZ root=UUID=$ROOT_UUID rw $DIAG_PARAMS console=tty0 console=ttyS0,115200
     initrd $GRUB_K716_INITRD
 }
 
@@ -154,7 +154,7 @@ menuentry 'Arch Linux, linux 7.1.6 (CONTROL)' {
     insmod $PART_MODULE
     insmod ext2
     search --no-floppy --fs-uuid --set=root $BOOT_UUID
-    linux $GRUB_K716_VMLINUZ root=UUID=$ROOT_UUID rw
+    linux $GRUB_K716_VMLINUZ root=UUID=$ROOT_UUID rw console=tty0 console=ttyS0,115200
     initrd $GRUB_K716_INITRD
 }
 # END vm-install kernels
